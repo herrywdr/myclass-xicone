@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIKaT by @akhtarzn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .sidebar-item:hover { @apply bg-slate-800 text-emerald-400 translate-x-1; }
+        .active-nav { @apply bg-emerald-600 text-white shadow-lg shadow-emerald-500/30; }
+        .modal { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10">
+            <div class="text-center mb-8">
+                <div class="bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">🏫</div>
+                <h1 class="text-3xl font-bold text-slate-800">Sistem Informasi Kelas Terpadu (SIKaT)</h1>
+                <p class="text-slate-500 text-sm mt-1">Silahkan masuk ke akun Anda</p>
+            </div>
+            
+            <button onclick="loginWithGoogle()" class="w-full py-3 px-4 border border-slate-300 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all font-semibold text-slate-700 mb-6">
+                <img src="https://www.google.com/favicon.ico" class="w-5 h-5"> Login dengan Google
+            </button>
+
+            <div class="relative flex py-4 items-center uppercase text-[10px] text-slate-400 font-bold tracking-widest">
+                <div class="flex-grow border-t border-slate-200"></div><span class="mx-4">Atau Email</span><div class="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <div class="space-y-4 mt-4">
+                <input type="email" id="auth-email" placeholder="Email Sekolah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 transition-all">
+                <input type="password" id="auth-password" placeholder="Password" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 transition-all">
+                <div class="flex gap-2 pt-2">
+                    <button onclick="signInEmail()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700">Masuk</button>
+                    <button onclick="signUpEmail()" class="flex-1 border border-emerald-600 text-emerald-600 py-3 rounded-xl font-bold hover:bg-emerald-50">Daftar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden min-h-screen flex flex-col md:flex-row">
+        <aside class="w-full md:w-72 bg-slate-900 text-slate-300 flex-shrink-0 z-20 shadow-xl">
+            <div class="p-8 border-b border-slate-800 mb-6">
+                <h1 class="text-xl font-bold text-white tracking-tight"><span class="text-emerald-500 underline decoration-4">SI</span> KELAS</h1>
+            </div>
+            <nav class="px-4 space-y-1">
+                <div class="admin-only"><p class="text-[10px] font-bold text-slate-500 uppercase px-4 py-2">Master Data</p>
+                <button onclick="showSection('classes')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>🏫</span> Data Kelas</button>
+                <button onclick="showSection('teachers')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>👨‍🏫</span> Data Guru</button>
+                <button onclick="showSection('students')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>🧑‍🎓</span> Data Siswa</button></div>
+                
+                <p class="text-[10px] font-bold text-slate-500 uppercase px-4 py-2 mt-4">Akademik</p>
+                <button onclick="showSection('attendance')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>📝</span> Absensi</button>
+                <button onclick="loadAttendanceReport()" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>📊</span> Rekap Absensi</button>
+                <button onclick="showSection('inventory')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"><span>📦</span> Inventori</button>
+                
+                <div class="pt-10 px-4">
+                    <button onclick="logout()" class="w-full text-left text-red-400 hover:text-red-300 text-sm font-semibold">Log Out</button>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto">
+            <header class="bg-white border-b border-slate-200 p-6 flex justify-between items-center sticky top-0 z-10">
+                <h2 id="current-title" class="text-2xl font-bold text-slate-800">Beranda</h2>
+                <div id="user-info" class="text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-full border border-slate-200"></div>
+            </header>
+
+            <div class="p-6 md:p-10 max-w-7xl mx-auto">
+                <div id="content-area" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead id="table-head" class="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-widest"></thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-container" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900/60 backdrop-blur-sm" onclick="toggleModal()"></div>
+        <div class="bg-white w-full max-w-md mx-4 rounded-3xl shadow-2xl z-50 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 id="modal-title" class="text-xl font-bold">Form Data</h3>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-900 text-2xl">&times;</button>
+            </div>
+            <form id="data-form" class="p-8 space-y-5">
+                <input type="hidden" id="edit-id">
+                <div id="form-fields" class="space-y-4"></div>
+                <button type="submit" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all">Simpan Data</button>
+            </form>
+        </div>
+    </div>
+
+    <button onclick="prepareCreate()" id="add-btn" class="fixed bottom-8 right-8 bg-emerald-600 text-white w-16 h-16 rounded-2xl shadow-2xl flex items-center justify-center text-3xl hover:scale-110 active:scale-95 transition-all z-40 hidden">+</button>
+
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = 'https://yicfisouyzmdvkxcsatr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpY2Zpc291eXptZHZreGNzYXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NTY2MDQsImV4cCI6MjA4NDUzMjYwNH0.4_qACxmVQ85gf6RH2KvpMvMcIyia60k0uOhxdRfKSdg';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentSection = 'classes';
+        let userRole = 'guru';
+        const config = {
+            classes: { title: 'Daftar Kelas', fields: ['name', 'academic_year'], labels: ['Nama Kelas', 'Tahun Akademik'] },
+            teachers: { title: 'Daftar Guru', fields: ['nip', 'name', 'subject'], labels: ['NIP', 'Nama Guru', 'Mata Pelajaran'] },
+            students: { title: 'Daftar Siswa', fields: ['nis', 'name'], labels: ['NIS', 'Nama Siswa'] },
+            inventory: { title: 'Inventori', fields: ['item_name', 'quantity', 'condition'], labels: ['Nama Barang', 'Jumlah', 'Kondisi'] },
+            attendance: { title: 'Absensi Harian', fields: ['student_id', 'status'], labels: ['ID Siswa', 'Status (Hadir/Izin/Sakit/Alpha)'] }
+        };
+
+        // --- AUTH LOGIC ---
+        async function loginWithGoogle() { await _supabase.auth.signInWithOAuth({ provider: 'google' }); }
+        async function signUpEmail() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const { error } = await _supabase.auth.signUp({ email, password });
+            if (error) alert(error.message); else alert("Cek email konfirmasi Anda!");
+        }
+        async function signInEmail() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const { error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) alert(error.message);
+        }
+        async function logout() { await _supabase.auth.signOut(); window.location.reload(); }
+
+        _supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                
+                // Cek Role dari Database
+                const { data } = await _supabase.from('profiles').select('role').eq('id', session.user.id).single();
+                userRole = data?.role || 'guru';
+                
+                document.getElementById('user-info').innerText = `${userRole.toUpperCase()} | ${session.user.email}`;
+                if (userRole === 'admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                    document.getElementById('add-btn').classList.remove('hidden');
+                } else {
+                    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+                }
+                showSection('attendance');
+            }
+        });
+
+        // --- UI & CRUD LOGIC ---
+        function toggleModal() {
+            const m = document.getElementById('modal-container');
+            m.classList.toggle('opacity-0');
+            m.classList.toggle('pointer-events-none');
+        }
+
+        async function showSection(sectionId) {
+            currentSection = sectionId;
+            document.getElementById('current-title').innerText = config[sectionId].title;
+            
+            const { data, error } = await _supabase.from(sectionId).select('*');
+            const fields = config[sectionId].fields;
+            
+            document.getElementById('table-head').innerHTML = `<tr>${config[sectionId].labels.map(l => `<th class="p-4">${l}</th>`).join('')}<th class="p-4">Aksi</th></tr>`;
+            document.getElementById('table-body').innerHTML = data.map(item => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    ${fields.map(f => `<td class="p-4 text-slate-600 font-medium">${item[f]}</td>`).join('')}
+                    <td class="p-4 flex gap-3">
+                        <button onclick="prepareEdit('${item.id}')" class="text-indigo-600 font-bold text-xs uppercase hover:tracking-widest transition-all">Edit</button>
+                        <button onclick="deleteData('${item.id}')" class="text-red-500 font-bold text-xs uppercase">Hapus</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- REKAP ABSENSI OTOMATIS ---
+        async function loadAttendanceReport() {
+            const { data } = await _supabase.from('attendance').select('status, students(name)');
+            const rekap = {};
+            data.forEach(d => {
+                const n = d.students.name;
+                if (!rekap[n]) rekap[n] = { hadir: 0, izin: 0, sakit: 0, alpha: 0 };
+                rekap[n][d.status.toLowerCase()]++;
+            });
+
+            document.getElementById('current-title').innerText = "Rekap Absensi Otomatis";
+            document.getElementById('table-head').innerHTML = `<tr><th class="p-4">Nama Siswa</th><th class="p-4">Hadir</th><th class="p-4">Izin</th><th class="p-4">Sakit</th><th class="p-4 text-red-500">Alpha</th></tr>`;
+            document.getElementById('table-body').innerHTML = Object.keys(rekap).map(nama => `
+                <tr class="border-b">
+                    <td class="p-4 font-bold text-slate-800">${nama}</td>
+                    <td class="p-4 text-center">${rekap[nama].hadir}</td>
+                    <td class="p-4 text-center">${rekap[nama].izin}</td>
+                    <td class="p-4 text-center">${rekap[nama].sakit}</td>
+                    <td class="p-4 text-center font-black text-red-500">${rekap[nama].alpha}</td>
+                </tr>
+            `).join('');
+        }
+
+        function prepareCreate() {
+            document.getElementById('data-form').reset();
+            document.getElementById('edit-id').value = '';
+            renderFields();
+            toggleModal();
+        }
+
+        async function prepareEdit(id) {
+            const { data } = await _supabase.from(currentSection).select('*').eq('id', id).single();
+            document.getElementById('edit-id').value = id;
+            renderFields(data);
+            toggleModal();
+        }
+
+        function renderFields(data = null) {
+            const container = document.getElementById('form-fields');
+            container.innerHTML = config[currentSection].fields.map((f, i) => `
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">${config[currentSection].labels[i]}</label>
+                    <input type="text" id="f-${f}" value="${data ? data[f] : ''}" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500" required>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('data-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const payload = {};
+            config[currentSection].fields.forEach(f => payload[f] = document.getElementById(`f-${f}`).value);
+
+            if (id) await _supabase.from(currentSection).update(payload).eq('id', id);
+            else await _supabase.from(currentSection).insert([payload]);
+
+            toggleModal();
+            showSection(currentSection);
+        };
+
+        async function deleteData(id) {
+            if (confirm('Hapus data?')) {
+                await _supabase.from(currentSection).delete().eq('id', id);
+                showSection(currentSection);
+            }
+        }
+    </script>
+</body>
+</html>
